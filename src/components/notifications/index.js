@@ -36,37 +36,13 @@ import Alerta from "./Alerta.vue";
  * @type { Record<string, any> }
  */
 const NotificationFormList = {
-    "telegram": Telegram,
     "webhook": Webhook,
     "smtp": STMP,
-    "discord": Discord,
     "teams": Teams,
-    "signal": Signal,
     "gotify": Gotify,
     "slack": Slack,
     "rocket.chat": RocketChat,
-    "pushover": Pushover,
-    "pushy": Pushy,
-    "PushByTechulus": TechulusPush,
-    "octopush": Octopush,
-    "promosms": PromoSMS,
-    "clicksendsms": ClickSendSMS,
-    "lunasea": LunaSea,
-    "Feishu": Feishu,
-    "AliyunSMS": AliyunSMS,
-    "apprise": Apprise,
-    "pushbullet": Pushbullet,
-    "line": Line,
     "mattermost": Mattermost,
-    "matrix": Matrix,
-    "DingDing": DingDing,
-    "Bark": Bark,
-    "serwersms": SerwerSMS,
-    "stackfield": Stackfield,
-    "WeCom": WeCom,
-    "GoogleChat": GoogleChat,
-    "gorush": Gorush,
-    "alerta": Alerta,
 };
 
 export default NotificationFormList;

@@ -29,9 +29,6 @@
                                     <option value="push">
                                         Push
                                     </option>
-                                    <option value="steam">
-                                        Steam Game Server
-                                    </option>
                                 </select>
                             </div>
 

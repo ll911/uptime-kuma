@@ -10,15 +10,18 @@ export default defineConfig({
     plugins: [
         vue(),
         legacy({
-            targets: ["ie > 11"],
-            additionalLegacyPolyfills: ["regenerator-runtime/runtime"]
+            targets: [ "ie > 11" ],
+            additionalLegacyPolyfills: [ "regenerator-runtime/runtime" ]
         })
     ],
     css: {
         postcss: {
             "parser": postCssScss,
             "map": false,
-            "plugins": [postcssRTLCSS]
+            "plugins": [ postcssRTLCSS ]
         }
     },
+    server: {
+        open: "/"
+    }
 });

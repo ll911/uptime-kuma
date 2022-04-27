@@ -258,6 +258,14 @@
             </div>
 
             <footer class="mt-5 mb-4">
+                <div class="custom-footer-text text-start">
+                    <strong v-if="enableEditMode">{{ $t("Custom Footer") }}:</strong>
+                </div>
+                <Editable v-model="config.footerText" tag="div" :contenteditable="enableEditMode" :noNL="false" class="alert-heading p-2" />
+
+                <p v-if="config.showPoweredBy">
+                    {{ $t("Powered by") }} <a target="_blank" href="https://github.com/louislam/uptime-kuma">{{ $t("Uptime Kuma" ) }}</a>
+                </p>
             </footer>
         </div>
 

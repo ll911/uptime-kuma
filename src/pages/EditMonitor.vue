@@ -50,7 +50,7 @@
                                 <CopyableInput id="push-url" v-model="pushURL" type="url" disabled="disabled" />
                                 <div class="form-text">
                                     {{ $t("needPushEvery", [monitor.interval]) }}<br />
-                                    {{ $t("pushOptionalParams", ["msg, ping"]) }}
+                                    {{ $t("pushOptionalParams", ["status, msg, ping"]) }}
                                 </div>
                             </div>
 
@@ -355,13 +355,12 @@
 </template>
 
 <script>
+import VueMultiselect from "vue-multiselect";
+import { useToast } from "vue-toastification";
+import CopyableInput from "../components/CopyableInput.vue";
 import NotificationDialog from "../components/NotificationDialog.vue";
 import ProxyDialog from "../components/ProxyDialog.vue";
 import TagsManager from "../components/TagsManager.vue";
-import CopyableInput from "../components/CopyableInput.vue";
-
-import { useToast } from "vue-toastification";
-import VueMultiselect from "vue-multiselect";
 import { genSecret, isDev } from "../util.ts";
 
 const toast = useToast();
@@ -416,7 +415,7 @@ export default {
         },
 
         pushURL() {
-            return this.$root.baseURL + "/api/push/" + this.monitor.pushToken + "?msg=OK&ping=";
+            return this.$root.baseURL + "/api/push/" + this.monitor.pushToken + "?status=up&msg=OK&ping=";
         },
 
         bodyPlaceholder() {
@@ -534,7 +533,7 @@ export default {
                 }
 
                 for (let i = 0; i < this.$root.notificationList.length; i++) {
-                    if (this.$root.notificationList[i].isDefault == true) {
+                    if (this.$root.notificationList[i].isDefault === true) {
                         this.monitor.notificationIDList[this.$root.notificationList[i].id] = true;
                     }
                 }

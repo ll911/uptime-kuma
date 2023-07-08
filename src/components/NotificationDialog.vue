@@ -110,60 +110,15 @@ export default {
 
         notificationNameList() {
             let regularList = {
-                "alerta": "Alerta",
-                "AlertNow": "AlertNow",
-                "apprise": this.$t("apprise"),
-                "Bark": "Bark",
-                "clicksendsms": "ClickSend SMS",
-                "discord": "Discord",
-                "GoogleChat": "Google Chat (Google Workspace)",
-                "gorush": "Gorush",
                 "gotify": "Gotify",
-                "HomeAssistant": "Home Assistant",
-                "Kook": "Kook",
-                "line": "LINE Messenger",
-                "LineNotify": "LINE Notify",
-                "lunasea": "LunaSea",
-                "matrix": "Matrix",
                 "mattermost": "Mattermost",
                 "ntfy": "Ntfy",
-                "octopush": "Octopush",
-                "OneBot": "OneBot",
-                "Opsgenie": "Opsgenie",
-                "PagerDuty": "PagerDuty",
-                "PagerTree": "PagerTree",
-                "pushbullet": "Pushbullet",
-                "PushByTechulus": "Push by Techulus",
-                "pushover": "Pushover",
-                "pushy": "Pushy",
                 "rocket.chat": "Rocket.Chat",
                 "signal": "Signal",
-                "slack": "Slack",
-                "squadcast": "SquadCast",
-                "SMSEagle": "SMSEagle",
                 "smtp": this.$t("smtp"),
-                "stackfield": "Stackfield",
                 "teams": "Microsoft Teams",
-                "telegram": "Telegram",
-                "twilio": "Twilio",
                 "Splunk": "Splunk",
-                "webhook": "Webhook",
-                "GoAlert": "GoAlert",
-                "ZohoCliq": "ZohoCliq"
-            };
-
-            // Put notifications here if it's not supported in most regions or its documentation is not in English
-            let regionalList = {
-                "AliyunSMS": "AliyunSMS (阿里云短信服务)",
-                "DingDing": "DingDing (钉钉自定义机器人)",
-                "Feishu": "Feishu (飞书)",
-                "FreeMobile": "FreeMobile (mobile.free.fr)",
-                "PushDeer": "PushDeer",
-                "promosms": "PromoSMS",
-                "serwersms": "SerwerSMS.pl",
-                "SMSManager": "SmsManager (smsmanager.cz)",
-                "WeCom": "WeCom (企业微信群机器人)",
-                "ServerChan": "ServerChan (Server酱)",
+                "webhook": "Webhook"
             };
 
             // Sort by notification name

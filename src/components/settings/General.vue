@@ -183,6 +183,12 @@ export default {
         autoGetPrimaryBaseURL() {
             this.settings.primaryBaseURL = location.protocol + "//" + location.host;
         },
+
+        testChrome() {
+            this.$root.getSocket().emit("testChrome", this.settings.chromeExecutable, (res) => {
+                this.$root.toastRes(res);
+            });
+        },
     },
 };
 </script>

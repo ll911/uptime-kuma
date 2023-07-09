@@ -141,7 +141,7 @@ export default {
                 // "slack": "Slack",
                 // "squadcast": "SquadCast",
                 // "SMSEagle": "SMSEagle",
-                // "smtp": this.$t("smtp"),
+                "smtp": this.$t("smtp"),
                 // "stackfield": "Stackfield",
                 "teams": "Microsoft Teams",
                 // "telegram": "Telegram",

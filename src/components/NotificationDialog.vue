@@ -121,6 +121,20 @@ export default {
                 "webhook": "Webhook"
             };
 
+            // Put notifications here if it's not supported in most regions or its documentation is not in English
+            let regionalList = {
+                "AliyunSMS": "AliyunSMS (阿里云短信服务)",
+                "DingDing": "DingDing (钉钉自定义机器人)",
+                "Feishu": "Feishu (飞书)",
+                "FreeMobile": "FreeMobile (mobile.free.fr)",
+                "PushDeer": "PushDeer",
+                "promosms": "PromoSMS",
+                "serwersms": "SerwerSMS.pl",
+                "SMSManager": "SmsManager (smsmanager.cz)",
+                "WeCom": "WeCom (企业微信群机器人)",
+                "ServerChan": "ServerChan (Server酱)",
+            };
+
             // Sort by notification name
             // No idea how, but it works
             // https://stackoverflow.com/questions/1069666/sorting-object-property-by-values

@@ -1,5 +1,6 @@
 import Gotify from "./Gotify.vue";
 import Mattermost from "./Mattermost.vue";
+import Nostr from "./Nostr.vue";
 import Ntfy from "./Ntfy.vue";
 import RocketChat from "./RocketChat.vue";
 import Slack from "./Slack.vue";
@@ -10,7 +11,6 @@ import Webhook from "./Webhook.vue";
 
 /**
  * Manage all notification form.
- *
  * @type { Record<string, any> }
  */
 const NotificationFormList = {

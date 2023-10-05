@@ -2,10 +2,10 @@ const https = require("https");
 const dayjs = require("dayjs");
 const axios = require("axios");
 const { Prometheus } = require("../prometheus");
-const { log, UP, DOWN, PENDING, MAINTENANCE, flipStatus, TimeLogger, MAX_INTERVAL_SECOND, MIN_INTERVAL_SECOND,
+const { log, UP, DOWN, PENDING, MAINTENANCE, flipStatus, MAX_INTERVAL_SECOND, MIN_INTERVAL_SECOND,
     SQL_DATETIME_FORMAT
 } = require("../../src/util");
-const { tcping, ping, dnsResolve, checkCertificate, checkStatusCode, getTotalClientInRoom, setting, mssqlQuery, postgresQuery, mysqlQuery, mqttAsync, setSetting, httpNtlm, radius, grpcQuery,
+const { tcping, ping, checkCertificate, checkStatusCode, getTotalClientInRoom, setting, mssqlQuery, postgresQuery, mysqlQuery, mqttAsync, setSetting, httpNtlm, radius, grpcQuery,
     redisPingAsync, mongodbPing, kafkaProducerAsync, getOidcTokenClientCredentials,
 } = require("../util-server");
 const { R } = require("redbean-node");
@@ -56,7 +56,7 @@ class Monitor extends BeanModel {
             obj.tags = await this.getTags();
         }
 
-        if (certExpiry && this.type === "http") {
+        if (certExpiry && this.type === "http" && this.getURLProtocol() === "https:") {
             const { certExpiryDaysRemaining, validCert } = await this.getCertExpiry(this.id);
             obj.certExpiryDaysRemaining = certExpiryDaysRemaining;
             obj.validCert = validCert;
@@ -431,6 +431,9 @@ class Monitor extends BeanModel {
                             } catch (e) {
                                 throw new Error("Your JSON body is invalid. " + e.message);
                             }
+                        } else if (this.httpBodyEncoding === "form") {
+                            bodyValue = this.body;
+                            contentType = "application/x-www-form-urlencoded";
                         } else if (this.httpBodyEncoding === "xml") {
                             bodyValue = this.body;
                             contentType = "text/xml; charset=utf-8";
@@ -580,46 +583,6 @@ class Monitor extends BeanModel {
                 } else if (this.type === "ping") {
                     bean.ping = await ping(this.hostname, this.packetSize);
                     bean.msg = "";
-                    bean.status = UP;
-                } else if (this.type === "dns") {
-                    let startTime = dayjs().valueOf();
-                    let dnsMessage = "";
-
-                    let dnsRes = await dnsResolve(this.hostname, this.dns_resolve_server, this.port, this.dns_resolve_type);
-                    bean.ping = dayjs().valueOf() - startTime;
-
-                    if (this.dns_resolve_type === "A" || this.dns_resolve_type === "AAAA" || this.dns_resolve_type === "TXT" || this.dns_resolve_type === "PTR") {
-                        dnsMessage += "Records: ";
-                        dnsMessage += dnsRes.join(" | ");
-                    } else if (this.dns_resolve_type === "CNAME") {
-                        dnsMessage += dnsRes[0];
-                    } else if (this.dns_resolve_type === "CAA") {
-                        dnsMessage += dnsRes[0].issue;
-                    } else if (this.dns_resolve_type === "MX") {
-                        dnsRes.forEach(record => {
-                            dnsMessage += `Hostname: ${record.exchange} - Priority: ${record.priority} | `;
-                        });
-                        dnsMessage = dnsMessage.slice(0, -2);
-                    } else if (this.dns_resolve_type === "NS") {
-                        dnsMessage += "Servers: ";
-                        dnsMessage += dnsRes.join(" | ");
-                    } else if (this.dns_resolve_type === "SOA") {
-                        dnsMessage += `NS-Name: ${dnsRes.nsname} | Hostmaster: ${dnsRes.hostmaster} | Serial: ${dnsRes.serial} | Refresh: ${dnsRes.refresh} | Retry: ${dnsRes.retry} | Expire: ${dnsRes.expire} | MinTTL: ${dnsRes.minttl}`;
-                    } else if (this.dns_resolve_type === "SRV") {
-                        dnsRes.forEach(record => {
-                            dnsMessage += `Name: ${record.name} | Port: ${record.port} | Priority: ${record.priority} | Weight: ${record.weight} | `;
-                        });
-                        dnsMessage = dnsMessage.slice(0, -2);
-                    }
-
-                    if (this.dnsLastResult !== dnsMessage && dnsMessage !== undefined) {
-                        R.exec("UPDATE `monitor` SET dns_last_result = ? WHERE id = ? ", [
-                            dnsMessage,
-                            this.id
-                        ]);
-                    }
-
-                    bean.msg = dnsMessage;
                     bean.status = UP;
                 } else if (this.type === "push") {      // Type: Push
                     log.debug("monitor", `[${this.name}] Checking monitor at ${dayjs().format("YYYY-MM-DD HH:mm:ss.SSS")}`);
@@ -985,7 +948,15 @@ class Monitor extends BeanModel {
 
             if (! this.isStop) {
                 log.debug("monitor", `[${this.name}] SetTimeout for next check.`);
-                this.heartbeatInterval = setTimeout(safeBeat, beatInterval * 1000);
+
+                let intervalRemainingMs = Math.max(
+                    1,
+                    beatInterval * 1000 - dayjs().diff(dayjs.utc(bean.time))
+                );
+
+                log.debug("monitor", `[${this.name}] Next heartbeat in: ${intervalRemainingMs}ms`);
+
+                this.heartbeatInterval = setTimeout(safeBeat, intervalRemainingMs);
             } else {
                 log.info("monitor", `[${this.name}] isStop = true, no next check.`);
             }
@@ -1090,6 +1061,19 @@ class Monitor extends BeanModel {
         try {
             return new URL(this.url);
         } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * Example: http: or https:
+     * @returns {(null|string)} URL's protocol
+     */
+    getURLProtocol() {
+        const url = this.getUrl();
+        if (url) {
+            return this.getUrl().protocol;
+        } else {
             return null;
         }
     }

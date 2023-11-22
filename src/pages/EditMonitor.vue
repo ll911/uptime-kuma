@@ -113,6 +113,9 @@
                                     {{ $t("needPushEvery", [monitor.interval]) }}<br />
                                     {{ $t("pushOptionalParams", ["status, msg, ping"]) }}
                                 </div>
+                                <button class="btn btn-primary" type="button" @click="resetToken">
+                                    {{ $t("Reset Token") }}
+                                </button>
                             </div>
 
                             <!-- Keyword -->
@@ -279,22 +282,17 @@
                             <!-- Docker Host -->
                             <!-- For Docker Type -->
                             <div v-if="monitor.type === 'docker'" class="my-3">
-                                <h2 class="mb-2">{{ $t("Docker Host") }}</h2>
-                                <p v-if="$root.dockerHostList.length === 0">
-                                    {{ $t("Not available, please setup.") }}
-                                </p>
-
-                                <div v-else class="mb-3">
+                                <div class="mb-3">
                                     <label for="docker-host" class="form-label">{{ $t("Docker Host") }}</label>
-                                    <select id="docket-host" v-model="monitor.docker_host" class="form-select">
-                                        <option v-for="host in $root.dockerHostList" :key="host.id" :value="host.id">{{ host.name }}</option>
-                                    </select>
-                                    <a href="#" @click="$refs.dockerHostDialog.show(monitor.docker_host)">{{ $t("Edit") }}</a>
+                                    <ActionSelect
+                                        v-model="monitor.docker_host"
+                                        :options="dockerHostOptionsList"
+                                        :disabled="$root.dockerHostList == null || $root.dockerHostList.length === 0"
+                                        :icon="'plus'"
+                                        :action="() => $refs.dockerHostDialog.show()"
+                                        :required="true"
+                                    />
                                 </div>
-
-                                <button class="btn btn-primary me-2" type="button" @click="$refs.dockerHostDialog.show()">
-                                    {{ $t("Setup Docker Host") }}
-                                </button>
                             </div>
 
                             <!-- MQTT -->
@@ -364,11 +362,20 @@
                                     <input id="connectionString" v-model="monitor.databaseConnectionString" type="text" class="form-control" required>
                                 </div>
                             </template>
+
+                            <template v-if="monitor.type === 'mysql'">
+                                <div class="my-3">
+                                    <label for="mysql-password" class="form-label">{{ $t("Password") }}</label>
+                                    <!-- TODO: Rename monitor.radiusPassword to monitor.password for general use -->
+                                    <HiddenInput id="mysql-password" v-model="monitor.radiusPassword" autocomplete="false"></HiddenInput>
+                                </div>
+                            </template>
+
                             <!-- SQL Server / PostgreSQL / MySQL -->
                             <template v-if="monitor.type === 'sqlserver' || monitor.type === 'postgres' || monitor.type === 'mysql'">
                                 <div class="my-3">
                                     <label for="sqlQuery" class="form-label">{{ $t("Query") }}</label>
-                                    <textarea id="sqlQuery" v-model="monitor.databaseQuery" class="form-control" :placeholder="$t('Example:', [ 'select getdate()' ])" required></textarea>
+                                    <textarea id="sqlQuery" v-model="monitor.databaseQuery" class="form-control" :placeholder="$t('Example:', [ 'SELECT 1' ])"></textarea>
                                 </div>
                             </template>
 
@@ -838,8 +845,11 @@ import TagsManager from "../components/TagsManager.vue";
 import { genSecret, isDev, MAX_INTERVAL_SECOND, MIN_INTERVAL_SECOND } from "../util.ts";
 import { hostNameRegexPattern } from "../util-frontend";
 import { sleep } from "../util";
+import HiddenInput from "../components/HiddenInput.vue";
 
-const toast = useToast();
+const toast = useToast;
+
+const pushTokenLength = 32;
 
 const monitorDefaults = {
     type: "http",
@@ -875,11 +885,14 @@ const monitorDefaults = {
     kafkaProducerSaslOptions: {
         mechanism: "None",
     },
+    kafkaProducerSsl: false,
+    kafkaProducerAllowAutoTopicCreation: false,
     gamedigGivenPortOnly: true,
 };
 
 export default {
     components: {
+        HiddenInput,
         ActionSelect,
         ProxyDialog,
         CopyableInput,
@@ -1103,6 +1116,21 @@ message HealthCheckResponse {
             return list;
         },
 
+        dockerHostOptionsList() {
+            if (this.$root.dockerHostList && this.$root.dockerHostList.length > 0) {
+                return this.$root.dockerHostList.map((host) => {
+                    return {
+                        label: host.name,
+                        value: host.id
+                    };
+                });
+            } else {
+                return [{
+                    label: this.$t("noDockerHostMsg"),
+                    value: null,
+                }];
+            }
+        }
     },
     watch: {
         "$root.proxyList"() {
@@ -1138,7 +1166,9 @@ message HealthCheckResponse {
         "monitor.type"() {
             if (this.monitor.type === "push") {
                 if (! this.monitor.pushToken) {
-                    this.monitor.pushToken = genSecret(10);
+                    // ideally this would require checking if the generated token is already used
+                    // it's very unlikely to get a collision though (62^32 ~ 2.27265788 * 10^57 unique tokens)
+                    this.monitor.pushToken = genSecret(pushTokenLength);
                 }
             }
 
@@ -1159,7 +1189,7 @@ message HealthCheckResponse {
                     if (res.ok) {
                         this.gameList = res.gameList;
                     } else {
-                        toast.error(res.msg);
+                        this.$root.toastError(res.msg);
                     }
                 });
             }
@@ -1304,7 +1334,7 @@ message HealthCheckResponse {
                             this.monitor.timeout = ~~(this.monitor.interval * 8) / 10;
                         }
                     } else {
-                        toast.error(res.msg);
+                        this.$root.toastError(res.msg);
                     }
                 });
             }
@@ -1338,7 +1368,17 @@ message HealthCheckResponse {
                     return false;
                 }
             }
+            if (this.monitor.type === "docker") {
+                if (this.monitor.docker_host == null) {
+                    toast.error(this.$t("DockerHostRequired"));
+                    return false;
+                }
+            }
             return true;
+        },
+
+        resetToken() {
+            this.monitor.pushToken = genSecret(pushTokenLength);
         },
 
         /**
@@ -1394,7 +1434,7 @@ message HealthCheckResponse {
                     createdNewParent = true;
                     this.monitor.parent = res.monitorID;
                 } else {
-                    toast.error(res.msg);
+                    this.$root.toastError(res.msg);
                     this.processing = false;
                     return;
                 }
@@ -1410,17 +1450,14 @@ message HealthCheckResponse {
                         if (createdNewParent) {
                             this.startParentGroupMonitor();
                         }
-
-                        toast.success(res.msg);
                         this.processing = false;
                         this.$root.getMonitorList();
                         this.$router.push("/dashboard/" + res.monitorID);
-
                     } else {
-                        toast.error(res.msg);
                         this.processing = false;
                     }
 
+                    this.$root.toastRes(res);
                 });
             } else {
                 await this.$refs.tagsManager.submit(this.monitor.id);

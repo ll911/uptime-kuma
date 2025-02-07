@@ -10,7 +10,7 @@
 
                             <div class="my-3">
                                 <label for="type" class="form-label">{{ $t("Monitor Type") }}</label>
-                                <select id="type" v-model="monitor.type" class="form-select">
+                                <select id="type" v-model="monitor.type" class="form-select" data-testid="monitor-type-select">
                                     <optgroup :label="$t('General Monitor Type')">
                                         <option value="group">
                                             {{ $t("Group") }}
@@ -58,6 +58,9 @@
                                         <option value="mqtt">
                                             MQTT
                                         </option>
+                                        <option value="rabbitmq">
+                                            RabbitMQ
+                                        </option>
                                         <option value="kafka-producer">
                                             Kafka Producer
                                         </option>
@@ -84,6 +87,13 @@
                                         </option>
                                     </optgroup>
                                 </select>
+                                <i18n-t v-if="monitor.type === 'rabbitmq'" keypath="rabbitmqHelpText" tag="div" class="form-text">
+                                    <template #rabitmq_documentation>
+                                        <a href="https://www.rabbitmq.com/management" target="_blank" rel="noopener noreferrer">
+                                            RabbitMQ documentation
+                                        </a>
+                                    </template>
+                                </i18n-t>
                             </div>
 
                             <div v-if="monitor.type === 'tailscale-ping'" class="alert alert-warning" role="alert">
@@ -93,13 +103,13 @@
                             <!-- Friendly Name -->
                             <div class="my-3">
                                 <label for="name" class="form-label">{{ $t("Friendly Name") }}</label>
-                                <input id="name" v-model="monitor.name" type="text" class="form-control" required>
+                                <input id="name" v-model="monitor.name" type="text" class="form-control" required data-testid="friendly-name-input">
                             </div>
 
                             <!-- URL -->
                             <div v-if="monitor.type === 'http' || monitor.type === 'keyword' || monitor.type === 'json-query' || monitor.type === 'real-browser' " class="my-3">
                                 <label for="url" class="form-label">{{ $t("URL") }}</label>
-                                <input id="url" v-model="monitor.url" type="url" class="form-control" pattern="https?://.+" required>
+                                <input id="url" v-model="monitor.url" type="url" class="form-control" pattern="https?://.+" required data-testid="url-input">
                             </div>
 
                             <!-- gRPC URL -->
@@ -227,11 +237,56 @@
                                 </div>
                             </template>
 
+                            <template v-if="monitor.type === 'rabbitmq'">
+                                <!-- RabbitMQ Nodes List -->
+                                <div class="my-3">
+                                    <label for="rabbitmqNodes" class="form-label">{{ $t("RabbitMQ Nodes") }}</label>
+                                    <VueMultiselect
+                                        id="rabbitmqNodes"
+                                        v-model="monitor.rabbitmqNodes"
+                                        :required="true"
+                                        :multiple="true"
+                                        :options="[]"
+                                        :placeholder="$t('Enter the list of nodes')"
+                                        :tag-placeholder="$t('Press Enter to add node')"
+                                        :max-height="500"
+                                        :taggable="true"
+                                        :show-no-options="false"
+                                        :close-on-select="false"
+                                        :clear-on-select="false"
+                                        :preserve-search="false"
+                                        :preselect-first="false"
+                                        @tag="addRabbitmqNode"
+                                    ></VueMultiselect>
+                                    <div class="form-text">
+                                        {{ $t("rabbitmqNodesDescription", ["https://node1.rabbitmq.com:15672"]) }}
+                                    </div>
+                                </div>
+
+                                <div class="my-3">
+                                    <label for="rabbitmqUsername" class="form-label">RabbitMQ {{ $t("RabbitMQ Username") }}</label>
+                                    <input id="rabbitmqUsername" v-model="monitor.rabbitmqUsername" type="text" required class="form-control">
+                                </div>
+
+                                <div class="my-3">
+                                    <label for="rabbitmqPassword" class="form-label">{{ $t("RabbitMQ Password") }}</label>
+                                    <HiddenInput id="rabbitmqPassword" v-model="monitor.rabbitmqPassword" autocomplete="false" required="true"></HiddenInput>
+                                </div>
+                            </template>
+
                             <!-- Hostname -->
                             <!-- TCP Port / Ping / DNS / Steam / MQTT / Radius / Tailscale Ping / SNMP only -->
                             <div v-if="monitor.type === 'port' || monitor.type === 'ping' || monitor.type === 'dns' || monitor.type === 'steam' || monitor.type === 'gamedig' || monitor.type === 'mqtt' || monitor.type === 'radius' || monitor.type === 'tailscale-ping' || monitor.type === 'snmp'" class="my-3">
                                 <label for="hostname" class="form-label">{{ $t("Hostname") }}</label>
-                                <input id="hostname" v-model="monitor.hostname" type="text" class="form-control" :pattern="`${monitor.type === 'mqtt' ? mqttIpOrHostnameRegexPattern : ipOrHostnameRegexPattern}`" required>
+                                <input
+                                    id="hostname"
+                                    v-model="monitor.hostname"
+                                    type="text"
+                                    class="form-control"
+                                    :pattern="`${monitor.type === 'mqtt' ? mqttIpOrHostnameRegexPattern : ipOrHostnameRegexPattern}`"
+                                    required
+                                    data-testid="hostname-input"
+                                >
                             </div>
 
                             <!-- Port -->
@@ -337,6 +392,7 @@
                                         :preselect-first="false"
                                         :max-height="500"
                                         :taggable="false"
+                                        data-testid="resolve-type-select"
                                     ></VueMultiselect>
 
                                     <div class="form-text">
@@ -503,6 +559,14 @@
                                 </div>
                             </template>
 
+                            <!-- Conditions -->
+                            <EditMonitorConditions
+                                v-if="supportsConditions && conditionVariables.length > 0"
+                                v-model="monitor.conditions"
+                                :condition-variables="conditionVariables"
+                                class="my-3"
+                            />
+
                             <!-- Interval -->
                             <div class="my-3">
                                 <label for="interval" class="form-label">{{ $t("Heartbeat Interval") }} ({{ $t("checkEverySecond", [ monitor.interval ]) }})</label>
@@ -526,7 +590,7 @@
                             </div>
 
                             <!-- Timeout: HTTP / Keyword / SNMP only -->
-                            <div v-if="monitor.type === 'http' || monitor.type === 'keyword' || monitor.type === 'json-query' || monitor.type === 'snmp'" class="my-3">
+                            <div v-if="monitor.type === 'http' || monitor.type === 'keyword' || monitor.type === 'json-query' || monitor.type === 'snmp' || monitor.type === 'rabbitmq'" class="my-3">
                                 <label for="timeout" class="form-label">{{ $t("Request Timeout") }} ({{ $t("timeoutAfter", [ monitor.timeout || clampTimeout(monitor.interval) ]) }})</label>
                                 <input id="timeout" v-model="monitor.timeout" type="number" class="form-control" required min="0" step="0.1">
                             </div>
@@ -542,8 +606,8 @@
 
                             <h2 v-if="monitor.type !== 'push'" class="mt-5 mb-2">{{ $t("Advanced") }}</h2>
 
-                            <div v-if="monitor.type === 'http' || monitor.type === 'keyword' || monitor.type === 'json-query' " class="my-3 form-check">
-                                <input id="expiry-notification" v-model="monitor.expiryNotification" class="form-check-input" type="checkbox">
+                            <div v-if="monitor.type === 'http' || monitor.type === 'keyword' || monitor.type === 'json-query' " class="my-3 form-check" :title="monitor.ignoreTls ? $t('ignoredTLSError') : ''">
+                                <input id="expiry-notification" v-model="monitor.expiryNotification" class="form-check-input" type="checkbox" :disabled="monitor.ignoreTls">
                                 <label class="form-check-label" for="expiry-notification">
                                     {{ $t("Certificate Expiry Notification") }}
                                 </label>
@@ -556,6 +620,18 @@
                                 <label class="form-check-label" for="ignore-tls">
                                     {{ monitor.type === "redis" ? $t("ignoreTLSErrorGeneral") : $t("ignoreTLSError") }}
                                 </label>
+                            </div>
+
+                            <div v-if="monitor.type === 'http' || monitor.type === 'keyword' || monitor.type === 'json-query' " class="my-3 form-check">
+                                <input id="cache-bust" v-model="monitor.cacheBust" class="form-check-input" type="checkbox" value="">
+                                <label class="form-check-label" for="cache-bust">
+                                    <i18n-t tag="label" keypath="cacheBusterParam" class="form-check-label" for="cache-bust">
+                                        <code>uptime_kuma_cachebuster</code>
+                                    </i18n-t>
+                                </label>
+                                <div class="form-text">
+                                    {{ $t("cacheBusterParamDescription") }}
+                                </div>
                             </div>
 
                             <div class="my-3 form-check">
@@ -945,7 +1021,15 @@
                     </div>
 
                     <div class="fixed-bottom-bar p-3">
-                        <button id="monitor-submit-btn" class="btn btn-primary" type="submit" :disabled="processing">{{ $t("Save") }}</button>
+                        <button
+                            id="monitor-submit-btn"
+                            class="btn btn-primary"
+                            type="submit"
+                            :disabled="processing"
+                            data-testid="save-button"
+                        >
+                            {{ $t("Save") }}
+                        </button>
                     </div>
                 </div>
             </form>
@@ -954,7 +1038,7 @@
             <DockerHostDialog ref="dockerHostDialog" @added="addedDockerHost" />
             <ProxyDialog ref="proxyDialog" @added="addedProxy" />
             <CreateGroupDialog ref="createGroupDialog" @added="addedDraftGroup" />
-            <RemoteBrowserDialog ref="remoteBrowserDialog" @added="addedRemoteBrowser" />
+            <RemoteBrowserDialog ref="remoteBrowserDialog" />
         </div>
     </transition>
 </template>
@@ -973,8 +1057,9 @@ import TagsManager from "../components/TagsManager.vue";
 import { genSecret, isDev, MAX_INTERVAL_SECOND, MIN_INTERVAL_SECOND, sleep } from "../util.ts";
 import { hostNameRegexPattern } from "../util-frontend";
 import HiddenInput from "../components/HiddenInput.vue";
+import EditMonitorConditions from "../components/EditMonitorConditions.vue";
 
-const toast = useToast;
+const toast = useToast();
 
 const pushTokenLength = 32;
 
@@ -1012,10 +1097,15 @@ const monitorDefaults = {
     kafkaProducerSaslOptions: {
         mechanism: "None",
     },
+    cacheBust: false,
     kafkaProducerSsl: false,
     kafkaProducerAllowAutoTopicCreation: false,
     gamedigGivenPortOnly: true,
-    remote_browser: null
+    remote_browser: null,
+    rabbitmqNodes: [],
+    rabbitmqUsername: "",
+    rabbitmqPassword: "",
+    conditions: []
 };
 
 export default {
@@ -1030,6 +1120,7 @@ export default {
         RemoteBrowserDialog,
         TagsManager,
         VueMultiselect,
+        EditMonitorConditions,
     },
 
     data() {
@@ -1060,7 +1151,6 @@ export default {
     },
 
     computed: {
-
         ipRegex() {
 
             // Allow to test with simple dns server with port (127.0.0.1:5300)
@@ -1284,7 +1374,15 @@ message HealthCheckResponse {
                     value: null,
                 }];
             }
-        }
+        },
+
+        supportsConditions() {
+            return this.$root.monitorTypeList[this.monitor.type]?.supportsConditions || false;
+        },
+
+        conditionVariables() {
+            return this.$root.monitorTypeList[this.monitor.type]?.conditionVariables || [];
+        },
     },
     watch: {
         "$root.proxyList"() {
@@ -1317,7 +1415,7 @@ message HealthCheckResponse {
             }
         },
 
-        "monitor.type"() {
+        "monitor.type"(newType, oldType) {
             if (this.monitor.type === "push") {
                 if (! this.monitor.pushToken) {
                     // ideally this would require checking if the generated token is already used
@@ -1339,11 +1437,14 @@ message HealthCheckResponse {
                 }
             }
 
-            if (this.monitor.type === "snmp") {
+            // Set a default timeout if the monitor type has changed or if it's a new monitor
+            if (oldType || this.isAdd) {
+                if (this.monitor.type === "snmp") {
                 // snmp is not expected to be executed via the internet => we can choose a lower default timeout
-                this.monitor.timeout = 5;
-            } else {
-                this.monitor.timeout = 48;
+                    this.monitor.timeout = 5;
+                } else {
+                    this.monitor.timeout = 48;
+                }
             }
 
             // Set default SNMP version
@@ -1389,6 +1490,10 @@ message HealthCheckResponse {
                 }
             }
 
+            // Reset conditions since condition variables likely change:
+            if (oldType && newType !== oldType) {
+                this.monitor.conditions = [];
+            }
         },
 
         currentGameObject(newGameObject, previousGameObject) {
@@ -1396,6 +1501,12 @@ message HealthCheckResponse {
                 this.monitor.port = newGameObject.options.port;
             }
             this.monitor.game = newGameObject.keys[0];
+        },
+
+        "monitor.ignoreTls"(newVal) {
+            if (newVal) {
+                this.monitor.expiryNotification = false;
+            }
         },
     },
     mounted() {
@@ -1526,6 +1637,10 @@ message HealthCheckResponse {
             this.monitor.kafkaProducerBrokers.push(newBroker);
         },
 
+        addRabbitmqNode(newNode) {
+            this.monitor.rabbitmqNodes.push(newNode);
+        },
+
         /**
          * Validate form input
          * @returns {boolean} Is the form input valid?
@@ -1550,6 +1665,17 @@ message HealthCheckResponse {
             if (this.monitor.type === "docker") {
                 if (this.monitor.docker_host == null) {
                     toast.error(this.$t("DockerHostRequired"));
+                    return false;
+                }
+            }
+
+            if (this.monitor.type === "rabbitmq") {
+                if (this.monitor.rabbitmqNodes.length === 0) {
+                    toast.error(this.$t("rabbitmqNodesRequired"));
+                    return false;
+                }
+                if (!this.monitor.rabbitmqNodes.every(node => node.startsWith("http://") || node.startsWith("https://"))) {
+                    toast.error(this.$t("rabbitmqNodesInvalid"));
                     return false;
                 }
             }
@@ -1630,7 +1756,6 @@ message HealthCheckResponse {
                             await this.startParentGroupMonitor();
                         }
                         this.processing = false;
-                        this.$root.getMonitorList();
                         this.$router.push("/dashboard/" + res.monitorID);
                     } else {
                         this.processing = false;
